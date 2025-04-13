@@ -1,12 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import MedicationsForm from '../components/MedicationsForm';
+
+type Metric = {
+  systolic: number;
+  diastolic: number;
+  created_at: string;
+};
+
+type Medication = {
+  name: string;
+  dosage: string;
+  frequency: string;
+  taken_at: string;
+  created_at: string;
+};
 
 function Dashboard() {
   const [systolic, setSystolic] = useState('');
   const [diastolic, setDiastolic] = useState('');
   const [message, setMessage] = useState('');
-  const [metrics, setMetrics] = useState([]);
+  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
 
   const token = localStorage.getItem('token');
+
+  if (!token) {
+    window.location.href = '/';
+    return null;
+  }
 
   const fetchMetrics = async () => {
     try {
@@ -28,8 +49,29 @@ function Dashboard() {
     }
   };
 
+  const fetchMedications = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/medications`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+  
+      const data = await res.json();
+  
+      if (res.ok) {
+        setMedications(data);
+      } else {
+        console.error('Error fetching medications:', data.message);
+      }
+    } catch (err) {
+      console.error('Fetch error:', err);
+    }
+  };  
+
   useEffect(() => {
     fetchMetrics();
+    fetchMedications();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +93,7 @@ function Dashboard() {
         setMessage('Metric submitted!');
         setSystolic('');
         setDiastolic('');
-        fetchMetrics(); // 👈 Refresh metric list after submission
+        fetchMetrics();
       } else {
         setMessage(data.message || 'Error submitting metric');
       }
@@ -66,7 +108,7 @@ function Dashboard() {
       <button
         onClick={() => {
           localStorage.removeItem('token');
-          window.location.href = '/'; // or your login route
+          window.location.href = '/'; 
         }}
         style={{ marginBottom: '1rem' }}
       >
@@ -114,6 +156,23 @@ function Dashboard() {
         ))}
       </ul>
       <hr style={{ margin: '2rem 0' }} />
+
+      <hr />
+
+      <h2>Log Medication</h2>
+      <MedicationsForm onSuccess={fetchMedications} />
+
+      <h2>Logged Medications</h2>
+      <ul>
+        {medications.map((med: any, index: number) => (
+          <li key={index}>
+            {med.name} ({med.dosage}, {med.frequency})
+            <br />
+            <small>Taken at: {new Date(med.taken_at).toLocaleString()}</small>
+          </li>
+        ))}
+      </ul>
+
 
       <h2>Reminders</h2>
       <p>
